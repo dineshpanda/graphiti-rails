@@ -1,5 +1,5 @@
 <% module_namespacing do -%>
-class <%= controller_klass %> < ApplicationController
+class <%= controller_klass %> < <%= graphiti_controller_klass %>
   <%- if actions?('index') -%>
   def index
     <%= file_name.pluralize %> = <%= resource_klass %>.all(params)

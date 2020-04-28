@@ -43,6 +43,7 @@ module Graphiti
     desc "This generator creates a resource file at app/resources, as well as corresponding controller/specs/route/etc"
     def generate_all
       generate_model
+      generate_graphiti_controller
       generate_controller
       generate_application_resource unless application_resource_defined?
       generate_route
@@ -134,6 +135,17 @@ module Graphiti
       defined?(::Responders)
     end
 
+    def graphiti_controller_klass
+      str = api_namespace_module if generate_controller_in_namespace?
+      [str, "GraphitiController"].compact.join('::')
+    end
+
+    def generate_graphiti_controller
+      path = generate_controller_in_namespace? ? api_namespace : class_path
+      to = File.join("app/controllers", path, "graphiti_controller.rb")
+      template("graphiti_controller.rb.erb", to)
+    end
+
     def generate_controller
       to = if generate_controller_in_namespace?
              File.join("app/controllers", api_namespace, "#{file_name.pluralize}_controller.rb")
@@ -204,7 +216,7 @@ module Graphiti
 
     def controller_klass
       generate_controller_in_namespace? ?
-        "#{api_namespace[1..-1].camelize}::#{model_klass.name.pluralize}Controller" :
+        "#{api_namespace_module}::#{model_klass.name.pluralize}Controller" :
         "#{model_klass.name.pluralize}Controller"
     end
 

@@ -25,6 +25,10 @@ module Graphiti
       end
     end
 
+    def api_namespace_module
+      api_namespace[1..-1].camelize
+    end
+
     def actions
       @options["actions"] || %w[index show create update destroy]
     end

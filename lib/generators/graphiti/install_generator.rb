@@ -16,15 +16,6 @@ module Graphiti
     def install
       to = File.join("app/resources", "application_resource.rb")
       template("application_resource.rb.erb", to)
-
-      inject_into_file "app/controllers/application_controller.rb", after: "class ApplicationController < ActionController::API\n" do
-        app_controller_code
-      end
-
-      inject_into_file "app/controllers/application_controller.rb", after: "class ApplicationController < ActionController::Base\n" do
-        app_controller_code
-      end
-
       inject_into_file "config/application.rb", after: "Rails::Application\n" do
         <<-'RUBY'
     # In order for Graphiti to generate links, you need to set the routes host.
@@ -67,14 +58,6 @@ module Graphiti
 
     def omit_comments?
       @options["omit-comments"]
-    end
-
-    def app_controller_code
-      str = ""
-      if defined?(::Responders)
-        str << "  include Graphiti::Rails::Responders\n"
-      end
-      str
     end
   end
 end

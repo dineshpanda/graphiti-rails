@@ -1,0 +1,5 @@
+class <%= graphiti_controller_klass %> < ApplicationController
+<% if responders? %>
+  <%= "  include Graphiti::Rails::Responders" %>
+<% end %>
+end
