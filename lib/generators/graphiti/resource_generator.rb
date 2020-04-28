@@ -2,6 +2,8 @@ require_relative "generator_mixin"
 
 module Graphiti
   class ResourceGenerator < ::Rails::Generators::NamedBase
+    SCOPED_ROUTES_REGEX = /ApplicationResource.*\sas:\s'api'\sdo/m
+
     include GeneratorMixin
 
     source_root File.expand_path("../templates", __FILE__)
@@ -31,6 +33,12 @@ module Graphiti
       type: :string,
       aliases: ["--model", "-m"],
       desc: "Specify to use attributes from a particular model"
+
+    class_option :'controller-namespace',
+      type: :boolean,
+      default: false,
+      aliases: ["--c-ns"],
+      desc: "Generate controllers in a namespace specified in .graphiticfg.yml"
 
     desc "This generator creates a resource file at app/resources, as well as corresponding controller/specs/route/etc"
     def generate_all
@@ -68,6 +76,10 @@ module Graphiti
 
     def omit_comments?
       @options["omit-comments"]
+    end
+
+    def generate_controller_in_namespace?
+      @options["controller-namespace"]
     end
 
     def attributes_class
@@ -123,7 +135,11 @@ module Graphiti
     end
 
     def generate_controller
-      to = File.join("app/controllers", class_path, "#{file_name.pluralize}_controller.rb")
+      to = if generate_controller_in_namespace?
+             File.join("app/controllers", api_namespace, "#{file_name.pluralize}_controller.rb")
+           else
+             File.join("app/controllers", class_path, "#{file_name.pluralize}_controller.rb")
+           end
       template("controller.rb.erb", to)
     end
 
@@ -137,12 +153,28 @@ module Graphiti
       "ApplicationResource".safe_constantize.present?
     end
 
+    def resource_routes_scoped?
+      File.read('config/routes.rb').scan(SCOPED_ROUTES_REGEX).any?
+    end
+
     def generate_route
-      code = "resources :#{file_name.pluralize}"
+      if generate_controller_in_namespace?
+        if !resource_routes_scoped?
+          inject_into_file "config/routes.rb", after: /ApplicationResource.*$\n/ do
+            indent("scope module: '#{api_namespace[1..-1]}', as: 'api' do\nend\n", 4)
+          end
+        end
+        routes_regex = SCOPED_ROUTES_REGEX
+        indent = 6
+      else
+        routes_regex = /ApplicationResource.*$\n/
+        indent = 4
+      end
+
+      code = "\nresources :#{file_name.pluralize}"
       code << %(, only: [#{actions.map { |a| ":#{a}" }.join(", ")}]) if actions.length < 5
-      code << "\n"
-      inject_into_file "config/routes.rb", after: /ApplicationResource.*$\n/ do
-        indent(code, 4)
+      inject_into_file "config/routes.rb", after: routes_regex  do
+        indent(code, indent)
       end
     end
 
@@ -168,6 +200,12 @@ module Graphiti
 
     def create?
       behavior == :invoke
+    end
+
+    def controller_klass
+      generate_controller_in_namespace? ?
+        "#{api_namespace[1..-1].camelize}::#{model_klass.name.pluralize}Controller" :
+        "#{model_klass.name.pluralize}Controller"
     end
 
     def model_klass
