@@ -185,6 +185,7 @@ module Graphiti
 
       code = "\nresources :#{file_name.pluralize}"
       code << %(, only: [#{actions.map { |a| ":#{a}" }.join(", ")}]) if actions.length < 5
+      code << "\n"
       inject_into_file "config/routes.rb", after: routes_regex  do
         indent(code, indent)
       end
